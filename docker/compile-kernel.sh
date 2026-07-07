@@ -3,7 +3,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
-IMAGE_NAME="${IMAGE_NAME:-timemachine-imx6ul-build:ubuntu16-i386}"
+IMAGE_NAME="${IMAGE_NAME:-imx6ul-kernel-module-build:ubuntu16-i386}"
 
 docker run --rm \
   --platform linux/386 \
@@ -29,7 +29,7 @@ restore_source_config() {
 trap restore_source_config EXIT
 
 if [ -f "${KERNEL_SRC}/.config" ]; then
-  SOURCE_CONFIG_BACKUP="$(mktemp /tmp/timemachine-kernel-config.XXXXXX)"
+  SOURCE_CONFIG_BACKUP="$(mktemp /tmp/imx6ul-kernel-config.XXXXXX)"
   cp "${KERNEL_SRC}/.config" "${SOURCE_CONFIG_BACKUP}"
 fi
 

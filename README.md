@@ -1,4 +1,4 @@
-# TimeMachine i.MX6UL Core Board
+# imx6ul-kernel-module
 
 这是一个基于 NXP/Freescale i.MX6UL 平台的核心板资料仓库，包含硬件原理图、PCB 源文件、关键器件数据手册、Linux 内核源码、BusyBox 源码包和交叉编译工具链。当前资料更偏向归档和二次开发参考，不是一个完整的一键构建 BSP。
 
