@@ -1,6 +1,6 @@
 # imx6ul-kernel-module
 
-这是一个基于 NXP/Freescale i.MX6UL 平台的核心板资料仓库，包含硬件原理图、PCB 源文件、关键器件数据手册、Linux 内核源码、BusyBox 源码包和交叉编译工具链。当前资料更偏向归档和二次开发参考，不是一个完整的一键构建 BSP。
+这是一个基于 NXP/Freescale i.MX6UL 平台的核心板资料仓库，包含硬件原理图、PCB 源文件、关键器件数据手册、Linux 内核源码、BusyBox rootfs 工程、镜像打包脚本和交叉编译工具链。
 
 ## 仓库内容
 
@@ -11,8 +11,12 @@
 │   ├── 原理图/            # PDF 原理图
 │   └── 源文件/            # Altium Designer 原理图/PCB 源文件
 ├── sourcecode/
+│   ├── bootloader/       # U-Boot 接入说明、环境模板和预留源码目录
 │   ├── busybox/          # BusyBox 1.20.2 源码包
+│   ├── images/           # 启动文件收集和 rootfs 打包脚本
 │   ├── kernel/           # Linux 3.14.38 内核源码
+│   ├── rootfs/           # 最小 BusyBox rootfs overlay 和构建脚本
+│   ├── scripts/          # sourcecode 组合构建入口
 │   └── README.md         # 源码构建说明
 ├── tools/
 │   ├── gcc-4.6.2-glibc-2.13-linaro-multilib/
@@ -48,8 +52,11 @@
 - `sourcecode/kernel/linux-3.14.38/`：Linux 3.14.38 内核源码。
 - `sourcecode/kernel/linux-3.14.38/linux_imx6ul_config`：本仓库提供的 i.MX6UL 内核配置。
 - `sourcecode/busybox/busybox-1.20.2.tar.gz`：BusyBox 1.20.2 源码包。
+- `sourcecode/rootfs/`：最小 rootfs overlay、init 脚本、网络启动脚本和 rootfs 构建脚本。
+- `sourcecode/images/`：收集 `zImage`、dtb 和打包 rootfs 的脚本。
+- `sourcecode/bootloader/`：U-Boot 接入说明、环境模板和预留源码目录。
 
-当前仓库没有提供完整的 U-Boot 源码、根文件系统工程或烧录脚本；相关内容需要根据实际板卡启动介质和部署方式补充。
+当前仓库仍未包含厂商板级 U-Boot 源码和已验证烧录脚本；这些内容需要根据实际板卡启动介质、DDR 初始化和部署方式补充。
 
 ## 构建环境
 
@@ -128,40 +135,35 @@ arch/arm/boot/dts/imx6ul-9x9-evk.dts
 
 具体镜像格式、设备树选择、启动参数和烧录方式取决于实际 U-Boot/启动介质配置，本仓库当前未固化这些流程。
 
-## BusyBox
+## Rootfs 和打包
 
-BusyBox 源码包位于：
-
-```text
-sourcecode/busybox/busybox-1.20.2.tar.gz
-```
-
-可用于制作基础 rootfs。一个最小的交叉编译流程如下：
+构建 BusyBox rootfs：
 
 ```bash
-cd sourcecode/busybox
-tar xf busybox-1.20.2.tar.gz
-cd busybox-1.20.2
-make ARCH=arm CROSS_COMPILE=../../../tools/gcc-4.6.2-glibc-2.13-linaro-multilib/fsl-linaro-toolchain/bin/arm-fsl-linux-gnueabi- defconfig
-make ARCH=arm CROSS_COMPILE=../../../tools/gcc-4.6.2-glibc-2.13-linaro-multilib/fsl-linaro-toolchain/bin/arm-fsl-linux-gnueabi- menuconfig
-make ARCH=arm CROSS_COMPILE=../../../tools/gcc-4.6.2-glibc-2.13-linaro-multilib/fsl-linaro-toolchain/bin/arm-fsl-linux-gnueabi- -j"$(nproc)"
-make ARCH=arm CROSS_COMPILE=../../../tools/gcc-4.6.2-glibc-2.13-linaro-multilib/fsl-linaro-toolchain/bin/arm-fsl-linux-gnueabi- CONFIG_PREFIX=/tmp/imx6ul-rootfs install
+./sourcecode/scripts/build-rootfs-docker.sh
 ```
 
-常见 rootfs 还需要补充：
+收集启动文件并打包 rootfs：
 
-- `/etc/inittab`、`/etc/init.d/rcS` 等启动脚本。
-- `/dev`、`/proc`、`/sys`、`/tmp`、`/run` 等目录。
-- C 库运行时文件，需与当前交叉工具链匹配。
-- 网络、挂载、串口登录和应用程序配置。
+```bash
+./sourcecode/scripts/build-images.sh
+```
 
-当前仓库未提供 rootfs 配置、init 脚本、打包脚本或文件系统镜像。
+默认输出：
+
+```text
+build/rootfs/
+build/images/boot/zImage
+build/images/boot/imx6ul-14x14-evk.dtb
+build/images/rootfs.tar.gz
+build/images/rootfs.ext4
+```
 
 ## 资料使用建议
 
 1. 先阅读 `hardware/原理图/FETIMX6UL.pdf`，确认板卡接口、电源和启动配置。
 2. 使用 `linux_imx6ul_config` 构建内核，作为驱动和板级配置的基线。
-3. 根据实际启动介质补充 U-Boot、设备树、rootfs 和烧录流程。
+3. 根据实际启动介质补充 U-Boot、设备树和烧录流程。
 4. 修改硬件设计时优先使用 `hardware/源文件/` 中的 Altium 源文件，并同步导出 PDF 原理图。
 
 ## 许可证

@@ -1,0 +1,20 @@
+#!/bin/sh
+
+PATH=/sbin:/bin:/usr/sbin:/usr/bin
+export PATH
+
+mount -a
+mkdir -p /dev/pts /dev/shm /tmp /run /var/log /var/run
+
+echo /sbin/mdev > /proc/sys/kernel/hotplug
+mdev -s
+
+hostname -F /etc/hostname
+
+ifconfig lo up
+
+if [ -x /etc/init.d/S50network ]; then
+    /etc/init.d/S50network start
+fi
+
+echo "i.MX6UL rootfs ready"

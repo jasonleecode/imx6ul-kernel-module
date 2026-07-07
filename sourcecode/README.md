@@ -2,9 +2,13 @@
 
 本目录保存 i.MX6UL 相关源码和源码包：
 
+- `bootloader/`：U-Boot 接入说明、默认环境模板和预留源码目录。
 - `kernel/linux-3.14.38/`：Linux 3.14.38 内核源码。
 - `kernel/linux-3.14.38/linux_imx6ul_config`：仓库提供的 i.MX6UL 内核配置。
 - `busybox/busybox-1.20.2.tar.gz`：BusyBox 1.20.2 源码包，可用于制作基础 rootfs。
+- `rootfs/`：最小 BusyBox rootfs overlay 和构建脚本。
+- `images/`：启动文件收集和 rootfs 打包脚本。
+- `scripts/`：组合构建入口。
 
 ## 依赖
 
@@ -34,15 +38,35 @@ kernel/linux-3.14.38/arch/arm/boot/dts/*.dtb
 ## BusyBox
 
 ```bash
-cd busybox
-tar xf busybox-1.20.2.tar.gz
-cd busybox-1.20.2
-make ARCH=arm CROSS_COMPILE=../../../tools/gcc-4.6.2-glibc-2.13-linaro-multilib/fsl-linaro-toolchain/bin/arm-fsl-linux-gnueabi- defconfig
-make ARCH=arm CROSS_COMPILE=../../../tools/gcc-4.6.2-glibc-2.13-linaro-multilib/fsl-linaro-toolchain/bin/arm-fsl-linux-gnueabi- menuconfig
-make ARCH=arm CROSS_COMPILE=../../../tools/gcc-4.6.2-glibc-2.13-linaro-multilib/fsl-linaro-toolchain/bin/arm-fsl-linux-gnueabi- -j"$(nproc)"
-make ARCH=arm CROSS_COMPILE=../../../tools/gcc-4.6.2-glibc-2.13-linaro-multilib/fsl-linaro-toolchain/bin/arm-fsl-linux-gnueabi- CONFIG_PREFIX=/tmp/imx6ul-rootfs install
+./sourcecode/scripts/build-rootfs-docker.sh
 ```
 
-## 未包含内容
+输出目录：
 
-当前仓库未包含完整 U-Boot 源码、rootfs 工程、文件系统镜像或烧录脚本。实际启动和部署流程需要结合板卡启动介质、U-Boot 环境变量和目标文件系统补充。
+```text
+build/rootfs/
+```
+
+## 打包
+
+收集内核启动文件：
+
+```bash
+./sourcecode/images/scripts/collect-boot-files.sh
+```
+
+打包 rootfs：
+
+```bash
+./sourcecode/images/scripts/package-rootfs.sh
+```
+
+输出目录：
+
+```text
+build/images/
+```
+
+## 尚需板级确认
+
+`bootloader/` 目录已经预留 U-Boot 接入位置，但仓库当前仍未包含厂商板级 U-Boot 源码。实际烧录前还需要结合启动介质、DDR 初始化、U-Boot 环境变量和目标板 DTS 做板级验证。

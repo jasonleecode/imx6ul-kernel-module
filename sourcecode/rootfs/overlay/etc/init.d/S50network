@@ -1,0 +1,20 @@
+#!/bin/sh
+
+case "$1" in
+    start)
+        ifconfig eth0 up
+        udhcpc -i eth0 -q -n &
+        ;;
+    stop)
+        killall udhcpc 2>/dev/null || true
+        ifconfig eth0 down
+        ;;
+    restart)
+        "$0" stop
+        "$0" start
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart}"
+        exit 1
+        ;;
+esac
