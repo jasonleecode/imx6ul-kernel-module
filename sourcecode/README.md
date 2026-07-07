@@ -9,7 +9,7 @@
 ## 依赖
 
 ```bash
-sudo apt-get install lzop
+sudo apt-get install lzop libncurses-dev
 ```
 
 ## 编译内核
@@ -18,13 +18,29 @@ sudo apt-get install lzop
 cd kernel/linux-3.14.38
 make distclean
 cp linux_imx6ul_config .config
-make ARCH=arm CROSS_COMPILE=../../../tools/gcc-4.6.2-glibc-2.13-linaro-multilib/fsl-linaro-toolchain/bin/arm-fsl-linux-gnueabi- -j"$(nproc)"
+make ARCH=arm CROSS_COMPILE=../../../tools/gcc-4.6.2-glibc-2.13-linaro-multilib/fsl-linaro-toolchain/bin/arm-fsl-linux-gnueabi- oldconfig
+make ARCH=arm CROSS_COMPILE=../../../tools/gcc-4.6.2-glibc-2.13-linaro-multilib/fsl-linaro-toolchain/bin/arm-fsl-linux-gnueabi- zImage modules dtbs -j"$(nproc)"
 ```
 
 内核输出目录：
 
 ```text
-kernel/linux-3.14.38/arch/arm/boot/
+kernel/linux-3.14.38/arch/arm/boot/zImage
+kernel/linux-3.14.38/arch/arm/boot/dts/*.dtb
+```
+
+内核源码包含多份 i.MX6UL 参考设备树，例如 `imx6ul-14x14-evk.dts`、`imx6ul-14x14-ddr3-arm2.dts` 和 `imx6ul-9x9-evk.dts`。当前没有按本核心板单独命名的 DTS，实际使用前需要结合 `hardware/` 下的原理图核对并派生板级设备树。
+
+## BusyBox
+
+```bash
+cd busybox
+tar xf busybox-1.20.2.tar.gz
+cd busybox-1.20.2
+make ARCH=arm CROSS_COMPILE=../../../tools/gcc-4.6.2-glibc-2.13-linaro-multilib/fsl-linaro-toolchain/bin/arm-fsl-linux-gnueabi- defconfig
+make ARCH=arm CROSS_COMPILE=../../../tools/gcc-4.6.2-glibc-2.13-linaro-multilib/fsl-linaro-toolchain/bin/arm-fsl-linux-gnueabi- menuconfig
+make ARCH=arm CROSS_COMPILE=../../../tools/gcc-4.6.2-glibc-2.13-linaro-multilib/fsl-linaro-toolchain/bin/arm-fsl-linux-gnueabi- -j"$(nproc)"
+make ARCH=arm CROSS_COMPILE=../../../tools/gcc-4.6.2-glibc-2.13-linaro-multilib/fsl-linaro-toolchain/bin/arm-fsl-linux-gnueabi- CONFIG_PREFIX=/tmp/imx6ul-rootfs install
 ```
 
 ## 未包含内容

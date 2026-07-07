@@ -53,10 +53,10 @@
 
 ## 构建环境
 
-建议使用 Linux 主机。内核构建至少需要：
+建议使用 Linux 主机。内核构建和 `menuconfig` 至少需要：
 
 ```bash
-sudo apt-get install lzop
+sudo apt-get install lzop libncurses-dev
 ```
 
 仓库已包含交叉编译工具链：
@@ -71,22 +71,62 @@ tools/gcc-4.6.2-glibc-2.13-linaro-multilib/fsl-linaro-toolchain/bin/arm-fsl-linu
 export PATH="$PWD/tools/gcc-4.6.2-glibc-2.13-linaro-multilib/fsl-linaro-toolchain/bin:$PATH"
 ```
 
+推荐使用仓库内的 Docker 环境构建，避免宿主机缺少 32 位运行库或 GCC 版本过新导致 Linux 3.14 编译失败：
+
+```bash
+./docker/build-image.sh
+./docker/compile-kernel.sh
+```
+
+Docker 构建环境说明见 [docker/README.md](docker/README.md)。编译输出会写入 `build/kernel-imx6ul/`。
+
 ## 编译 Linux 内核
 
 ```bash
 cd sourcecode/kernel/linux-3.14.38
 make distclean
 cp linux_imx6ul_config .config
-make ARCH=arm CROSS_COMPILE=../../../tools/gcc-4.6.2-glibc-2.13-linaro-multilib/fsl-linaro-toolchain/bin/arm-fsl-linux-gnueabi- -j"$(nproc)"
+make ARCH=arm CROSS_COMPILE=../../../tools/gcc-4.6.2-glibc-2.13-linaro-multilib/fsl-linaro-toolchain/bin/arm-fsl-linux-gnueabi- oldconfig
+make ARCH=arm CROSS_COMPILE=../../../tools/gcc-4.6.2-glibc-2.13-linaro-multilib/fsl-linaro-toolchain/bin/arm-fsl-linux-gnueabi- zImage modules dtbs -j"$(nproc)"
 ```
 
 编译产物通常位于：
 
 ```text
-sourcecode/kernel/linux-3.14.38/arch/arm/boot/
+sourcecode/kernel/linux-3.14.38/arch/arm/boot/zImage
+sourcecode/kernel/linux-3.14.38/arch/arm/boot/dts/*.dtb
 ```
 
-具体镜像格式、设备树、启动参数和烧录方式取决于实际 U-Boot/启动介质配置，本仓库当前未固化这些流程。
+如需安装内核模块到临时 rootfs：
+
+```bash
+make ARCH=arm CROSS_COMPILE=../../../tools/gcc-4.6.2-glibc-2.13-linaro-multilib/fsl-linaro-toolchain/bin/arm-fsl-linux-gnueabi- INSTALL_MOD_PATH=/tmp/imx6ul-rootfs modules_install
+```
+
+当前内核配置的 `CONFIG_LOCALVERSION` 为 `-6UL_ga`，默认命令行基线包含 `console=ttymxc0,115200`。实际启动参数仍建议由 U-Boot 环境变量提供。
+
+## 设备树
+
+内核源码中包含多份 i.MX6UL 参考 DTS，例如：
+
+```text
+arch/arm/boot/dts/imx6ul-14x14-ddr3-arm2.dts
+arch/arm/boot/dts/imx6ul-14x14-ddr3-arm2-emmc.dts
+arch/arm/boot/dts/imx6ul-14x14-ddr3-arm2-lcdif.dts
+arch/arm/boot/dts/imx6ul-14x14-evk.dts
+arch/arm/boot/dts/imx6ul-9x9-evk.dts
+```
+
+这些文件可作为移植参考，但仓库当前没有按本核心板单独命名的 DTS。适配实际硬件时，建议基于原理图核对以下内容后再派生板级 DTS：
+
+- DDR 类型和容量。
+- 启动介质：eMMC、NAND、TF/MicroSD 或 QSPI。
+- ENET PHY 地址、复位脚、中断脚和参考时钟。
+- UART 控制台端口。
+- LCD 分辨率、时序和背光控制。
+- RTC、触摸、CAN、USB ID/VBUS、GPIO 扩展等外设连接。
+
+具体镜像格式、设备树选择、启动参数和烧录方式取决于实际 U-Boot/启动介质配置，本仓库当前未固化这些流程。
 
 ## BusyBox
 
@@ -96,7 +136,26 @@ BusyBox 源码包位于：
 sourcecode/busybox/busybox-1.20.2.tar.gz
 ```
 
-可用于制作基础 rootfs。当前仓库未提供 rootfs 配置、init 脚本、打包脚本或文件系统镜像。
+可用于制作基础 rootfs。一个最小的交叉编译流程如下：
+
+```bash
+cd sourcecode/busybox
+tar xf busybox-1.20.2.tar.gz
+cd busybox-1.20.2
+make ARCH=arm CROSS_COMPILE=../../../tools/gcc-4.6.2-glibc-2.13-linaro-multilib/fsl-linaro-toolchain/bin/arm-fsl-linux-gnueabi- defconfig
+make ARCH=arm CROSS_COMPILE=../../../tools/gcc-4.6.2-glibc-2.13-linaro-multilib/fsl-linaro-toolchain/bin/arm-fsl-linux-gnueabi- menuconfig
+make ARCH=arm CROSS_COMPILE=../../../tools/gcc-4.6.2-glibc-2.13-linaro-multilib/fsl-linaro-toolchain/bin/arm-fsl-linux-gnueabi- -j"$(nproc)"
+make ARCH=arm CROSS_COMPILE=../../../tools/gcc-4.6.2-glibc-2.13-linaro-multilib/fsl-linaro-toolchain/bin/arm-fsl-linux-gnueabi- CONFIG_PREFIX=/tmp/imx6ul-rootfs install
+```
+
+常见 rootfs 还需要补充：
+
+- `/etc/inittab`、`/etc/init.d/rcS` 等启动脚本。
+- `/dev`、`/proc`、`/sys`、`/tmp`、`/run` 等目录。
+- C 库运行时文件，需与当前交叉工具链匹配。
+- 网络、挂载、串口登录和应用程序配置。
+
+当前仓库未提供 rootfs 配置、init 脚本、打包脚本或文件系统镜像。
 
 ## 资料使用建议
 
